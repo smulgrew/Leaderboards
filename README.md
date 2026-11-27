@@ -9,6 +9,7 @@ leadersboards/
 ├── docs/DATA_MODEL.md           Tables, ER diagram, score-type rules, assumptions
 ├── docs/schema.sql              Generated DDL (for reference; EF migrations are the source of truth)
 ├── scripts/smoke-test.sh        End-to-end API test with curl
+├── start.bat / stop.bat         Windows: double-click to start/stop everything
 └── docker-compose.yml           Local Postgres
 ```
 
@@ -16,7 +17,35 @@ leadersboards/
 
 ---
 
-## 1. Run the backend (about 5 minutes)
+## 0. Quick start on Windows (double-click)
+
+Once the three tools below are installed, **double-click `start.bat`** in the repo folder. It:
+
+1. checks Docker Desktop, the .NET 10 SDK and Node.js are installed, and if one is missing tells you which and offers to open its download page,
+2. starts Docker Desktop if it isn't running, then starts the Postgres database,
+3. runs `npm install` the first time,
+4. opens a window called **LeadersBoards API** (`dotnet run`) and one called **LeadersBoards Expo** (`npx expo start`, with the QR code for your phone),
+5. waits until the API answers on `http://localhost:5271/health`.
+
+**Double-click `stop.bat`** to close both windows and stop the database. Your data is kept for next time.
+
+Install these once (restart VS Code afterwards so it sees them; that's the usual cause of "dotnet.exe not found"):
+
+| Tool | Download | Notes |
+|---|---|---|
+| Docker Desktop | https://www.docker.com/products/docker-desktop/ | Open it once after installing so it finishes setup |
+| .NET 10 SDK | https://dotnet.microsoft.com/download/dotnet/10.0 | Pick the **SDK** (x64), not "Runtime" |
+| Node.js LTS | https://nodejs.org/en/download | Version 20 or newer |
+
+The first time the API starts, Windows Firewall may ask about `dotnet`. Allow it on **private networks**, otherwise your phone can't reach the API.
+
+**Why a `.bat` and not an `.exe`?** A `.bat` is a plain-text list of commands that Windows runs when you double-click it, so it behaves like an exe but you can open it in VS Code and see exactly what it does. A real exe would have to be compiled, would be flagged by antivirus and SmartScreen because it isn't signed, and couldn't include Docker, .NET or Node anyway (they're big installers that need admin rights). `start.bat` is two lines that hand over to `scripts/windows/start.ps1`, a PowerShell script (PowerShell is Windows' built-in scripting language, roughly "C#-flavoured shell"), where all the checks live with comments.
+
+If Windows shows "Windows protected your PC" when you double-click, it's because the files came from a ZIP download: click **More info, Run anyway**, or right-click the file, **Properties**, tick **Unblock**.
+
+---
+
+## 1. Run the backend (by hand, any OS, about 5 minutes)
 
 You need the [.NET 10 SDK](https://dotnet.microsoft.com/download) and either Docker or a free hosted Postgres.
 

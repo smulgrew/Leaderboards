@@ -12,3 +12,5 @@ ios/
 android/
 # OS
 .DS_Store
+# start.bat bookkeeping
+.run/
