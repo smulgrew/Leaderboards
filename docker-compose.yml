@@ -1,0 +1,12 @@
+# Local Postgres for development: `docker compose up -d`
+# (Or skip Docker and point the connection string at a free Neon/Supabase database.)
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: leadersboards
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+volumes:
+  pgdata:

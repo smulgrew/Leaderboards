@@ -1,0 +1,112 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#2a2d35;font-family:-apple-system,"SF Pro Text","Inter","Segoe UI",Roboto,sans-serif;color:#f2f3f5;display:flex;gap:48px;padding:40px;align-items:flex-start;width:max-content}
+.phone{width:390px;height:844px;background:#0f1115;border-radius:48px;border:10px solid #000;position:relative;overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.5)}
+.status{height:50px;display:flex;justify-content:space-between;align-items:center;padding:14px 28px 0;font-size:15px;font-weight:600}
+.notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:120px;height:34px;background:#000;border-radius:20px}
+.content{padding:8px 18px 100px;display:flex;flex-direction:column;gap:14px}
+.top{display:flex;justify-content:space-between;align-items:center}
+.muted{color:#8b90a0;font-size:13px}
+h1{font-size:26px;font-weight:700}
+h2{font-size:17px;font-weight:600}
+.avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#ffcc00,#ff8a00);color:#000;display:flex;align-items:center;justify-content:center;font-weight:700}
+.card{background:#1a1d24;border-radius:14px;padding:14px}
+.invite{border:1px solid #ffcc0055;background:linear-gradient(180deg,#2a2510,#1a1d24)}
+.row{display:flex;align-items:center;gap:10px}
+.btn{border-radius:10px;padding:9px 14px;font-weight:600;font-size:14px;text-align:center;border:1px solid #ffcc00}
+.primary{background:#ffcc00;color:#000}.ghost{color:#ffcc00}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.action{background:#1a1d24;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.action.big{background:#ffcc00;color:#000}
+.action .ic{font-size:22px}
+.action .t{font-weight:700;font-size:15px}
+.action .s{font-size:12px;opacity:.7}
+.board{display:flex;align-items:center;gap:12px}
+.badge{font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px}
+.b-lock{background:#33363f;color:#cfd2da}.b-done{background:#15391f;color:#5fdc84}.b-draft{background:#3a2f10;color:#ffcc00}
+.icon{width:44px;height:44px;border-radius:12px;background:#262a33;display:flex;align-items:center;justify-content:center;font-size:22px}
+.tabs{position:absolute;bottom:0;left:0;right:0;height:84px;background:#151820;border-top:1px solid #23262e;display:flex;justify-content:space-around;padding-top:10px}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:#8b90a0}
+.tab.on{color:#ffcc00}.tab span{font-size:22px}
+.sec{display:flex;justify-content:space-between;align-items:baseline;margin-top:4px}
+.link{color:#ffcc00;font-size:13px}
+.menu .item{display:flex;justify-content:space-between;padding:14px 4px;border-bottom:1px solid #262a33;font-size:15px}
+.menu .item:last-child{border:none}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{background:#1a1d24;border-radius:14px;padding:12px;text-align:center}
+.stat b{font-size:22px;display:block}
+.logout{color:#ff5c5c;border:1px solid #ff5c5c55;border-radius:12px;padding:13px;text-align:center;font-weight:600}
+.caption{position:absolute;top:-30px;left:0;color:#9aa0ad;font-size:14px}
+.wrap{position:relative;padding-top:4px}
+.pr{display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 0}
+.pr .avatar{width:84px;height:84px;font-size:30px}
+</style></head><body>
+
+<div class="phone"><div class="notch"></div>
+<div class="status"><span>9:41</span><span>▮▮▮ 🔋</span></div>
+<div class="content">
+  <div class="top">
+    <div><div class="muted">Friday 27 Nov</div><h1>Hey Charlie 👋</h1></div>
+    <div class="avatar">C</div>
+  </div>
+
+  <div class="card invite">
+    <div class="row" style="justify-content:space-between">
+      <div><h2>Hyrox Doubles Sim</h2><div class="muted">Alex invited you · 2h ago</div></div>
+      <span class="badge b-draft">INVITE</span>
+    </div>
+    <div class="row" style="margin-top:12px"><div class="btn primary" style="flex:1">Accept</div><div class="btn ghost" style="flex:1">Decline</div></div>
+  </div>
+
+  <div class="actions">
+    <div class="action big"><div class="ic">＋</div><div class="t">Create leaderboard</div><div class="s">Build it by hand</div></div>
+    <div class="action"><div class="ic">📸</div><div class="t">Import from photo</div><div class="s muted">Snap the whiteboard, AI fills it in</div></div>
+  </div>
+
+  <div class="sec"><h2>My leaderboards</h2><span class="link">See all</span></div>
+
+  <div class="card board"><div class="icon">🏃</div>
+    <div style="flex:1"><h2>Friday Hyrox sim</h2><div class="muted">8 events · 12 members</div></div>
+    <span class="badge b-lock">🔒 3 to post</span></div>
+
+  <div class="card board"><div class="icon">🏋️</div>
+    <div style="flex:1"><h2>CrossFit Open 26.1</h2><div class="muted">You're 4th of 19 · ❤️ 6</div></div>
+    <span class="badge b-done">✓ Posted</span></div>
+
+  <div class="card board"><div class="icon">🚣</div>
+    <div style="flex:1"><h2>December Row Challenge</h2><div class="muted">Only you can see this</div></div>
+    <span class="badge b-draft">Draft</span></div>
+</div>
+<div class="tabs">
+  <div class="tab on"><span>🏠</span>Home</div>
+  <div class="tab"><span>🏆</span>Boards</div>
+  <div class="tab"><span>🔔</span>Activity</div>
+  <div class="tab"><span>👤</span>Profile</div>
+</div></div>
+
+<div class="phone"><div class="notch"></div>
+<div class="status"><span>9:41</span><span>▮▮▮ 🔋</span></div>
+<div class="content">
+  <div class="top"><h1>Profile</h1><span class="link">Edit</span></div>
+  <div class="pr"><div class="avatar">C</div><h2>Charlie</h2><div class="muted">Member since Nov 2026</div></div>
+  <div class="stats">
+    <div class="stat"><b>3</b><span class="muted">Boards</span></div>
+    <div class="stat"><b>27</b><span class="muted">Scores</span></div>
+    <div class="stat"><b>41</b><span class="muted">❤️ received</span></div>
+  </div>
+  <div class="card menu">
+    <div class="item"><span>🏅 Personal bests</span><span class="muted">›</span></div>
+    <div class="item"><span>📬 Weekly recap email</span><span class="link">On</span></div>
+    <div class="item"><span>🔔 Notifications</span><span class="muted">›</span></div>
+    <div class="item"><span>⚖️ Units</span><span class="muted">kg · km ›</span></div>
+    <div class="item"><span>🔒 Privacy</span><span class="muted">›</span></div>
+  </div>
+  <div class="logout">Log out</div>
+</div>
+<div class="tabs">
+  <div class="tab"><span>🏠</span>Home</div>
+  <div class="tab"><span>🏆</span>Boards</div>
+  <div class="tab"><span>🔔</span>Activity</div>
+  <div class="tab on"><span>👤</span>Profile</div>
+</div></div>
+</body></html>

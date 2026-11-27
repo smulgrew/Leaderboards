@@ -1,0 +1,14 @@
+# .NET
+bin/
+obj/
+*.user
+# Node / Expo
+node_modules/
+.expo/
+dist/
+web-build/
+.env*.local
+ios/
+android/
+# OS
+.DS_Store
