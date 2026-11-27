@@ -4,6 +4,12 @@
 $root    = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $pidFile = Join-Path $root '.run\windows.pids'
 
+# Always use THIS repo's docker-compose.yml. If a COMPOSE_FILE environment variable is set
+# (often left over from another project), docker would otherwise use that project's file.
+Remove-Item Env:COMPOSE_FILE, Env:COMPOSE_PROJECT_NAME -ErrorAction SilentlyContinue
+$composeArgs = @('compose', '-f', (Join-Path $root 'docker-compose.yml'), '-p', 'leadersboards')
+
+
 Write-Host ""
 Write-Host "LeadersBoards - stopping local dev environment" -ForegroundColor White
 
@@ -21,7 +27,7 @@ if (Get-Command docker -ErrorAction SilentlyContinue) {
     & docker info *> $null
     if ($LASTEXITCODE -eq 0) {
         Push-Location $root
-        try { & docker compose stop } finally { Pop-Location }
+        try { & docker @composeArgs stop } finally { Pop-Location }
         Write-Host "  [ok] Database stopped (your data is kept)" -ForegroundColor Green
     } else {
         Write-Host "  Docker isn't running, so the database is already stopped."

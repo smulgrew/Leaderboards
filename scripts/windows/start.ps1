@@ -19,6 +19,12 @@ $appDir  = Join-Path $root 'mobile'
 $runDir  = Join-Path $root '.run'          # where we remember the window process ids for stop.bat
 $pidFile = Join-Path $runDir 'windows.pids'
 
+# Always use THIS repo's docker-compose.yml. If a COMPOSE_FILE environment variable is set
+# (often left over from another project), docker would otherwise use that project's file.
+Remove-Item Env:COMPOSE_FILE, Env:COMPOSE_PROJECT_NAME -ErrorAction SilentlyContinue
+$composeArgs = @('compose', '-f', (Join-Path $root 'docker-compose.yml'), '-p', 'leadersboards')
+
+
 function Say($text)  { Write-Host "  $text" }
 function Ok($text)   { Write-Host "  [ok] $text" -ForegroundColor Green }
 function Step($text) { Write-Host ""; Write-Host "== $text" -ForegroundColor Cyan }
@@ -128,7 +134,7 @@ Ok "Docker is running"
 Push-Location $root
 try {
     # -d = "detached": run in the background and give us the prompt back.
-    & docker compose up -d
+    & docker @composeArgs up -d
     if ($LASTEXITCODE -ne 0) {
         Fail "Couldn't start the Postgres container." `
              "If the error above mentions port 5432, another Postgres is already using it. Stop that one (or uninstall it) and try again." `
@@ -139,9 +145,9 @@ try {
     Say "Waiting for Postgres to accept connections..."
     $waited = 0
     while ($true) {
-        & docker compose exec -T db pg_isready -U postgres *> $null
+        & docker @composeArgs exec -T db pg_isready -U postgres *> $null
         if ($LASTEXITCODE -eq 0) { break }
-        if ($waited -ge 60) { Fail "Postgres didn't become ready within 60 seconds." "Run 'docker compose logs db' to see why." $null }
+        if ($waited -ge 60) { Fail "Postgres didn't become ready within 60 seconds." "Run 'docker compose -p leadersboards logs db' in the repo folder to see why." $null }
         Start-Sleep -Seconds 2; $waited += 2
     }
 } finally { Pop-Location }
