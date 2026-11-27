@@ -50,7 +50,7 @@ If Windows shows "Windows protected your PC" when you double-click, it's because
 You need the [.NET 10 SDK](https://dotnet.microsoft.com/download) and either Docker or a free hosted Postgres.
 
 ```bash
-docker compose up -d                      # Postgres on localhost:5432 (user/pass: postgres)
+docker compose up -d                      # Postgres on localhost:5433 (user/pass: postgres)
 cd backend/LeadersBoards.Api
 dotnet run                                # listens on http://0.0.0.0:5271
 ```

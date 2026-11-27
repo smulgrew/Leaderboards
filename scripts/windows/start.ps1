@@ -138,7 +138,7 @@ try {
     & docker @composeArgs up -d
     if ($LASTEXITCODE -ne 0) {
         Fail "Couldn't start the Postgres container." `
-             "If the error above mentions port 5432, another Postgres is already using it. Stop that one (or uninstall it) and try again." `
+             "If the error above mentions port 5433, something else is already using it. Stop that one (or uninstall it) and try again." `
              $null
     }
 
@@ -152,7 +152,7 @@ try {
         Start-Sleep -Seconds 2; $waited += 2
     }
 } finally { Pop-Location }
-Ok "Postgres is ready on localhost:5432"
+Ok "Postgres is ready on localhost:5433"
 
 # ---------------------------------------------------------------- mobile dependencies
 Step "Checking the mobile app's packages"
