@@ -45,6 +45,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Source).HasMaxLength(20);
             e.HasOne(x => x.Owner).WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => new { x.Visibility, x.Status }); // public board discovery
+            e.HasIndex(x => x.ExpiresAt).HasFilter("expires_at IS NOT NULL"); // cleanup job
         });
 
         b.Entity<LeaderboardEvent>(e =>
@@ -101,7 +102,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Currency).HasMaxLength(3);
             e.Property(x => x.Provider).HasMaxLength(20);
             e.Property(x => x.ProviderRef).HasMaxLength(255);
-            e.HasOne(x => x.Leaderboard).WithMany().HasForeignKey(x => x.LeaderboardId);
+            // Deleting a board keeps its payments (board id becomes null) for the accounts.
+            e.HasOne(x => x.Leaderboard).WithMany().HasForeignKey(x => x.LeaderboardId).OnDelete(DeleteBehavior.SetNull);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => x.LeaderboardId);
             e.HasIndex(x => new { x.Provider, x.ProviderRef }).IsUnique(); // webhook idempotency

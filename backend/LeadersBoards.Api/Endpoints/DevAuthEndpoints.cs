@@ -2,7 +2,7 @@ using LeadersBoards.Api.Contracts;
 using LeadersBoards.Api.Data;
 using LeadersBoards.Api.Domain;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
+using LeadersBoards.Api.Jobs;
 
 namespace LeadersBoards.Api.Endpoints;
 
@@ -26,14 +26,19 @@ public static class DevAuthEndpoints
 
         // DEV ONLY. Pretend the payment provider said "paid". The real Stripe webhook will
         // verify the signature, look up the Payment by ProviderRef, then call the same ApplyPaid.
-        app.MapPost("/dev/payments/{id:guid}/mark-paid", async (Guid id, AppDbContext db, IOptions<PlanOptions> plans) =>
+        app.MapPost("/dev/payments/{id:guid}/mark-paid", async (Guid id, AppDbContext db) =>
         {
             var p = await db.Payments.Include(x => x.Leaderboard).FirstOrDefaultAsync(x => x.Id == id);
-            if (p is null) return Results.NotFound();
+            if (p?.Leaderboard is null) return Results.NotFound();
             if (p.Status == PaymentStatus.Paid) return Results.NoContent(); // webhooks can arrive twice
-            BoardRules.ApplyPaid(p, p.Leaderboard, plans.Value, DateTimeOffset.UtcNow);
+            BoardRules.ApplyPaid(p, p.Leaderboard, DateTimeOffset.UtcNow);
             await db.SaveChangesAsync();
             return Results.NoContent();
         });
+
+        // DEV ONLY. Run the expired-board cleanup now instead of waiting for the hourly timer.
+        // ?asOf= lets you pretend it's a future date, to test the 30-day deletion.
+        app.MapPost("/dev/cleanup-expired", async (DateTimeOffset? asOf, AppDbContext db) =>
+            new { deleted = await ExpiredBoardCleanup.DeleteExpired(db, asOf ?? DateTimeOffset.UtcNow) });
     }
 }

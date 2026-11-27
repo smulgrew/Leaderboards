@@ -30,7 +30,7 @@ In Development the API **applies migrations on startup**, so there are no manual
 
 To use **Neon or Supabase** instead of Docker, put their connection string in `appsettings.Development.json` under `ConnectionStrings:Default` (or set the `ConnectionStrings__Default` env var).
 
-Then run `scripts/smoke-test.sh` to exercise the whole flow: invites, the hidden-results rule, AMRAP and time-cap ranking, hearts, seen-by, comments, member caps, joining public boards, and paying to publish a one-off comp. Start the API with `Plans__FreePrivateMemberLimit=3 dotnet run` so the cap test triggers. It passed against Postgres when this skeleton was built.
+Then run `scripts/smoke-test.sh` to exercise the whole flow: invites, the hidden-results rule, AMRAP and time-cap ranking, hearts, seen-by, comments, member caps, paying for public boards, the 30-day deletion of public one-offs, and deleting a board. Start the API with `Plans__FreePrivateMemberLimit=3 dotnet run` so the cap test triggers. It passed against Postgres when this skeleton was built.
 
 ### How the backend is laid out
 
@@ -39,7 +39,8 @@ Then run `scripts/smoke-test.sh` to exercise the whole flow: invites, the hidden
 | `Program.cs` | Wires up DI, EF Core (snake_case names), JSON enums as strings, CORS, endpoints |
 | `Domain/Entities.cs`, `Enums.cs` | The tables as C# classes |
 | `Domain/ScoreRules.cs` | **All score-type logic**: default sort, validation, ranking with ties and caps, display formatting |
-| `Domain/BoardRules.cs`, `PlanOptions.cs` | Board kind, visibility and plan rules: member caps, pay-to-publish, closing scores, what a payment unlocks |
+| `Domain/BoardRules.cs`, `PlanOptions.cs` | Board kind, visibility and pricing rules: member caps, pay-to-publish, closing scores, what a payment unlocks, expiry dates |
+| `Jobs/ExpiredBoardCleanup.cs` | Hourly background job that deletes public one-off boards 30 days after the event |
 | `Data/AppDbContext.cs` | Keys, indexes, relationships |
 | `Data/Access.cs` | Permission checks, including **`CanSeeResults`**, the hidden-until-you-post rule |
 | `Endpoints/*.cs` | Minimal API route groups: boards, invites, events/scores/hearts/comments |
@@ -59,9 +60,11 @@ POST /leaderboards                       create draft {name, kind, visibility, s
 GET  /leaderboards/{id}                  board + events (+ "did I post?")
 POST /leaderboards/{id}/events           add event (admin)
 DEL  /events/{id}                        remove event with no scores (admin)
-POST /leaderboards/{id}/publish          draft -> published (admin; one-offs must be paid: 402)
-POST /leaderboards/{id}/checkout         start a payment {kind: OneOffEvent | ProMonthly}
+POST /leaderboards/{id}/publish          draft -> published (admin; public boards must be paid: 402)
+POST /leaderboards/{id}/checkout         start a payment {kind: PublicOneOff | PublicOngoing | PrivateUnlimited}
+DEL  /leaderboards/{id}                  delete a board and everything in it (owner)
 POST /dev/payments/{id}/mark-paid        dev stand-in for the payment webhook
+POST /dev/cleanup-expired?asOf=          run the expiry job now (optionally "as of" a future date)
 POST /leaderboards/{id}/invites          {email, role} (admin; 402 when the board is full)
 POST /leaderboards/{id}/invites/accept | /decline
 PUT  /events/{id}/scores/me              submit/update my score

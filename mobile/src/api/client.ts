@@ -28,6 +28,7 @@ export type ScoreType = 'Time' | 'Reps' | 'Weight' | 'RoundsReps' | 'Distance' |
 export type MemberRole = 'Member' | 'Admin' | 'Owner';
 export type LeaderboardKind = 'OneOff' | 'Ongoing';   // dated comp vs never-ending (daily WODs)
 export type Visibility = 'Private' | 'Public';         // invite-only vs tap-to-join
+export type BoardPlan = 'Free' | 'PublicOneOff' | 'PublicOngoing' | 'PrivateUnlimited';
 
 export type User = { id: string; email: string; displayName: string };
 export type LeaderboardSummary = {
@@ -44,8 +45,10 @@ export type EventInfo = {
 };
 export type Leaderboard = {
   id: string; name: string; description: string | null; kind: LeaderboardKind; visibility: Visibility; status: string;
-  startsAt: string | null; endsAt: string | null; plan: 'Free' | 'OneOffEvent' | 'Pro';
-  memberLimit: number | null; memberCount: number; needsPaymentToPublish: boolean;
+  startsAt: string | null; endsAt: string | null;
+  expiresAt: string | null;                 // public one-offs: when the board is auto-deleted
+  plan: BoardPlan; memberLimit: number | null; memberCount: number;
+  requiredPaymentToPublish: BoardPlan | null; // e.g. 'PublicOneOff' -> show a "Pay to publish" button
   myRole: MemberRole; events: EventInfo[];
 };
 export type Invite = { leaderboardId: string; leaderboardName: string; invitedBy: string; invitedAt: string };

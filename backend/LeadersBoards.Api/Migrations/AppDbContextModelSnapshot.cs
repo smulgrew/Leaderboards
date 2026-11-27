@@ -132,6 +132,10 @@ namespace LeadersBoards.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("ends_at");
 
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
                     b.Property<string>("Kind")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -157,10 +161,6 @@ namespace LeadersBoards.Api.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("plan");
-
-                    b.Property<DateTimeOffset?>("PlanExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("plan_expires_at");
 
                     b.Property<DateTimeOffset?>("PublishedAt")
                         .HasColumnType("timestamp with time zone")
@@ -190,6 +190,10 @@ namespace LeadersBoards.Api.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_leaderboards");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_leaderboards_expires_at")
+                        .HasFilter("expires_at IS NOT NULL");
 
                     b.HasIndex("OwnerId")
                         .HasDatabaseName("ix_leaderboards_owner_id");
@@ -327,7 +331,7 @@ namespace LeadersBoards.Api.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("kind");
 
-                    b.Property<Guid>("LeaderboardId")
+                    b.Property<Guid?>("LeaderboardId")
                         .HasColumnType("uuid")
                         .HasColumnName("leaderboard_id");
 
@@ -569,8 +573,7 @@ namespace LeadersBoards.Api.Migrations
                     b.HasOne("LeadersBoards.Api.Domain.Leaderboard", "Leaderboard")
                         .WithMany()
                         .HasForeignKey("LeaderboardId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
+                        .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_payments_leaderboards_leaderboard_id");
 
                     b.HasOne("LeadersBoards.Api.Domain.User", null)

@@ -32,8 +32,9 @@ public class Leaderboard
     /// <summary>Max members (accepted + pending invites). Null = unlimited. Copied from the plan
     /// when it changes, so you can grandfather old boards or give someone a custom deal.</summary>
     public int? MemberLimit { get; set; }
-    /// <summary>Pro (subscription) only: when the paid period runs out.</summary>
-    public DateTimeOffset? PlanExpiresAt { get; set; }
+    /// <summary>When the board (and all its scores) gets deleted automatically. Set on publish for
+    /// public one-off boards; null = kept until the owner deletes it. See ExpiredBoardCleanup.</summary>
+    public DateTimeOffset? ExpiresAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? PublishedAt { get; set; }
 
@@ -133,8 +134,9 @@ public class Comment
 public class Payment
 {
     public Guid Id { get; set; } = Guid.CreateVersion7();
-    public Guid LeaderboardId { get; set; }
-    public Leaderboard Leaderboard { get; set; } = null!;
+    /// <summary>Nullable so the payment record survives when its board is deleted (accounting).</summary>
+    public Guid? LeaderboardId { get; set; }
+    public Leaderboard? Leaderboard { get; set; }
     public Guid UserId { get; set; }
     public PaymentKind Kind { get; set; }
     public int AmountCents { get; set; }
