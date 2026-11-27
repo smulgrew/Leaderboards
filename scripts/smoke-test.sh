@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # End-to-end smoke test of the API: invite flow, hidden results, ranking, hearts, seen-by,
-# member caps, public join, and pay-to-publish one-off events.
+# member caps, paid public boards, 30-day deletion of public one-offs, and board deletion.
 # Run the API with a small free cap so the cap test triggers:
 #   Plans__FreePrivateMemberLimit=3 dotnet run
 set -euo pipefail
@@ -51,38 +51,48 @@ code() { curl -s -o /dev/null -w "%{http_code}" -H "Content-Type: application/js
 id() { python3 -c 'import sys,json;print(json.load(sys.stdin)["id"])'; }
 PAT=$(login pat@example.com Pat)
 
-echo; echo "== Member cap (free private limit 3: Alex, Sam, Jo) =="
-echo "Inviting a 4th person -> $(code -X POST $API/leaderboards/$BOARD/invites -H "$(H $ALEX)" -d '{"email":"pat@example.com"}') (expect 402)"
+paid() { # pay for a board: paid <board> <kind>
+  local pid; pid=$(j -X POST $API/leaderboards/$1/checkout -H "$(H $ALEX)" -d "{\"kind\":\"$2\"}" | python3 -c 'import sys,json;print(json.load(sys.stdin)["paymentId"])')
+  j -X POST $API/dev/payments/$pid/mark-paid; }
 
-echo; echo "== Public ongoing board: find and join, no invite =="
+echo; echo "== Private board: free up to the cap (3 in this test: Alex, Sam, Jo) =="
+echo "Inviting a 4th person -> $(code -X POST $API/leaderboards/$BOARD/invites -H "$(H $ALEX)" -d '{"email":"pat@example.com"}') (expect 402)"
+echo "Wrong plan for a private board -> $(code -X POST $API/leaderboards/$BOARD/checkout -H "$(H $ALEX)" -d '{"kind":"PublicOngoing"}') (expect 400)"
+paid $BOARD PrivateUnlimited
+echo "After paying PrivateUnlimited, invite a 4th -> $(code -X POST $API/leaderboards/$BOARD/invites -H "$(H $ALEX)" -d '{"email":"pat@example.com"}') (expect 204)"
+
+echo; echo "== Public ongoing board: paid, then anyone can join =="
 GYM=$(j -X POST $API/leaderboards -H "$(H $ALEX)" -d '{"name":"Box 101 daily WODs","kind":"Ongoing","visibility":"Public"}' | id)
+echo "Publish before paying -> $(code -X POST $API/leaderboards/$GYM/publish -H "$(H $ALEX)") (expect 402)"
+paid $GYM PublicOngoing
 j -X POST $API/leaderboards/$GYM/publish -H "$(H $ALEX)"
 j -X POST $API/leaderboards/$GYM/events -H "$(H $ALEX)" -d '{"name":"Mon: 5k row","scoreType":"Time","scheduledOn":"2026-11-23"}' >/dev/null
 j -X POST $API/leaderboards/$GYM/events -H "$(H $ALEX)" -d '{"name":"Fri: Grace","scoreType":"Time","scheduledOn":"2026-11-27"}' >/dev/null
 echo "Pat searches 'box':"; j "$API/leaderboards/public?q=box" -H "$(H $PAT)"; echo
 j -X POST $API/leaderboards/$GYM/join -H "$(H $PAT)"
-echo "Pat's boards:"; j $API/me/leaderboards -H "$(H $PAT)" | python3 -c 'import sys,json;print([(b["name"],b["kind"],b["visibility"]) for b in json.load(sys.stdin)])'
-echo "Events, newest day first:"; j $API/leaderboards/$GYM -H "$(H $PAT)" | python3 -c 'import sys,json;print([(e["scheduledOn"],e["name"]) for e in json.load(sys.stdin)["events"]])'
+echo "Events, newest day first:"; j $API/leaderboards/$GYM -H "$(H $PAT)" | python3 -c 'import sys,json;d=json.load(sys.stdin);print([(e["scheduledOn"],e["name"]) for e in d["events"]], "expiresAt:", d["expiresAt"])'
 echo "Joining a private board directly -> $(code -X POST $API/leaderboards/$BOARD/join -H "$(H $PAT)") (expect 404)"
 
-echo; echo "== One-off comp: pay EUR 20 to publish =="
+echo; echo "== Public one-off comp: paid, deleted 30 days after the event =="
 COMP=$(j -X POST $API/leaderboards -H "$(H $ALEX)" -d '{"name":"Dublin Throwdown","kind":"OneOff","visibility":"Public","startsAt":"2027-03-14T09:00:00Z",
   "events":[{"name":"Event 1: 2k row","scoreType":"Time"},{"name":"Event 2: Max clean","scoreType":"Weight"}]}' | id)
 echo "Publish before paying -> $(code -X POST $API/leaderboards/$COMP/publish -H "$(H $ALEX)") (expect 402)"
-CHECKOUT=$(j -X POST $API/leaderboards/$COMP/checkout -H "$(H $ALEX)" -d '{"kind":"OneOffEvent"}'); echo "Checkout: $CHECKOUT"
-PAY=$(echo "$CHECKOUT" | python3 -c 'import sys,json;print(json.load(sys.stdin)["paymentId"])')
-j -X POST $API/dev/payments/$PAY/mark-paid; j -X POST $API/dev/payments/$PAY/mark-paid   # twice, like a repeated webhook
+paid $COMP PublicOneOff
 echo "Publish after paying -> $(code -X POST $API/leaderboards/$COMP/publish -H "$(H $ALEX)") (expect 204)"
-j $API/leaderboards/$COMP -H "$(H $ALEX)" | python3 -c 'import sys,json;d=json.load(sys.stdin);print({k:d[k] for k in ["kind","plan","memberLimit","startsAt","endsAt","needsPaymentToPublish"]})'
+j $API/leaderboards/$COMP -H "$(H $ALEX)" | python3 -c 'import sys,json;d=json.load(sys.stdin);print({k:d[k] for k in ["plan","memberLimit","startsAt","endsAt","expiresAt","requiredPaymentToPublish"]})'
+echo "Cleanup as of 2027-04-12 (before expiry): $(j -X POST "$API/dev/cleanup-expired?asOf=2027-04-12T00:00:00Z")"
+echo "Cleanup as of 2027-04-14 (after expiry):  $(j -X POST "$API/dev/cleanup-expired?asOf=2027-04-14T00:00:00Z")"
+echo "Board after cleanup -> $(code $API/leaderboards/$COMP -H "$(H $ALEX)") (expect 404)"
 
 echo; echo "== Finished one-off: scores closed for members =="
-OLD=$(j -X POST $API/leaderboards -H "$(H $ALEX)" -d '{"name":"Last year comp","kind":"OneOff","visibility":"Public","startsAt":"2025-06-01T09:00:00Z","endsAt":"2025-06-02T09:00:00Z",
+OLD=$(j -X POST $API/leaderboards -H "$(H $ALEX)" -d '{"name":"Last year comp","kind":"OneOff","visibility":"Private","startsAt":"2025-06-01T09:00:00Z","endsAt":"2025-06-02T09:00:00Z",
   "events":[{"name":"Chipper","scoreType":"Time"}]}' | id)
-P2=$(j -X POST $API/leaderboards/$OLD/checkout -H "$(H $ALEX)" -d '{"kind":"OneOffEvent"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["paymentId"])')
-j -X POST $API/dev/payments/$P2/mark-paid; j -X POST $API/leaderboards/$OLD/publish -H "$(H $ALEX)"
-echo "Finished comps are hidden from public search: $(j "$API/leaderboards/public?q=last" -H "$(H $PAT)")"
+j -X POST $API/leaderboards/$OLD/publish -H "$(H $ALEX)"
 OLDEV=$(j $API/leaderboards/$OLD -H "$(H $ALEX)" | python3 -c 'import sys,json;print(json.load(sys.stdin)["events"][0]["id"])')
 j -X POST $API/leaderboards/$OLD/invites -H "$(H $ALEX)" -d '{"email":"pat@example.com"}'; j -X POST $API/leaderboards/$OLD/invites/accept -H "$(H $PAT)"
 echo "Pat posts after it ended: $(curl -s -X PUT $API/events/$OLDEV/scores/me -H "$(H $PAT)" -H "Content-Type: application/json" -d '{"primaryValue":900}')"
 echo "Admin corrects a score after it ended -> $(code -X PUT $API/events/$OLDEV/scores/me -H "$(H $ALEX)" -d '{"primaryValue":880}') (expect 200)"
+
+echo; echo "== Owner deletes a board =="
+echo "Member tries -> $(code -X DELETE $API/leaderboards/$OLD -H "$(H $PAT)") (expect 403); owner -> $(code -X DELETE $API/leaderboards/$OLD -H "$(H $ALEX)") (expect 204)"
 echo "SMOKE TEST PASSED"

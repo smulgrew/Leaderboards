@@ -28,9 +28,14 @@ public enum LeaderboardKind { OneOff, Ongoing }
 /// <summary>Public = anyone can find it and tap Join. Private = admins invite people.</summary>
 public enum Visibility { Private, Public }
 
-/// <summary>What the board has paid for. Limits per plan come from appsettings "Plans".</summary>
-public enum BoardPlan { Free, OneOffEvent, Pro }
+/// <summary>What the board has paid for. Prices and limits per plan come from appsettings "Plans".
+///  Free             – private boards, up to FreePrivateMemberLimit (30) people.
+///  PublicOneOff     – paid; public one-off comp, deleted RetentionDays (30) after the event.
+///  PublicOngoing    – paid; public board that runs until its owner deletes it.
+///  PrivateUnlimited – paid; a private board that has outgrown the free limit.</summary>
+public enum BoardPlan { Free, PublicOneOff, PublicOngoing, PrivateUnlimited }
 
-public enum PaymentKind { OneOffEvent, ProMonthly }
+/// <summary>What a payment buys. Each one moves the board to the BoardPlan of the same name.</summary>
+public enum PaymentKind { PublicOneOff, PublicOngoing, PrivateUnlimited }
 
 public enum PaymentStatus { Pending, Paid, Failed, Refunded }

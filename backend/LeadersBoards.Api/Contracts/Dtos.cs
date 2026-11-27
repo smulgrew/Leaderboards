@@ -17,8 +17,8 @@ public record CreateEventRequest(string Name, string? Description, ScoreType Sco
 public record LeaderboardSummaryDto(Guid Id, string Name, LeaderboardKind Kind, Visibility Visibility,
     LeaderboardStatus Status, MemberRole MyRole, int EventCount, DateTimeOffset? StartsAt);
 public record LeaderboardDto(Guid Id, string Name, string? Description, LeaderboardKind Kind, Visibility Visibility,
-    LeaderboardStatus Status, DateTimeOffset? StartsAt, DateTimeOffset? EndsAt,
-    BoardPlan Plan, int? MemberLimit, int MemberCount, bool NeedsPaymentToPublish,
+    LeaderboardStatus Status, DateTimeOffset? StartsAt, DateTimeOffset? EndsAt, DateTimeOffset? ExpiresAt,
+    BoardPlan Plan, int? MemberLimit, int MemberCount, PaymentKind? RequiredPaymentToPublish,
     MemberRole MyRole, List<EventDto> Events);
 public record EventDto(Guid Id, string Name, string? Description, ScoreType ScoreType,
     SortDirection SortDirection, int? TimeCapSeconds, int Position, DateOnly? ScheduledOn, bool ISubmitted);

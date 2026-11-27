@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using LeadersBoards.Api.Data;
 using LeadersBoards.Api.Domain;
 using LeadersBoards.Api.Endpoints;
+using LeadersBoards.Api.Jobs;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +17,9 @@ builder.Services.ConfigureHttpJsonOptions(o =>
 
 // Prices and member limits live in appsettings.json "Plans" (see Domain/PlanOptions.cs).
 builder.Services.Configure<PlanOptions>(builder.Configuration.GetSection("Plans"));
+
+// Hourly job that deletes public one-off boards past their 30-day retention.
+builder.Services.AddHostedService<ExpiredBoardCleanup>();
 
 builder.Services.AddOpenApi();
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));

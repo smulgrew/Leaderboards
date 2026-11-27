@@ -35,9 +35,9 @@ erDiagram
         varchar visibility "Private | Public"
         timestamptz starts_at "one-offs"
         timestamptz ends_at "scores close"
-        varchar plan "Free | OneOffEvent | Pro"
+        varchar plan "Free | PublicOneOff | PublicOngoing | PrivateUnlimited"
         int member_limit "null = unlimited"
-        timestamptz plan_expires_at "Pro only"
+        timestamptz expires_at "auto-delete (public one-offs)"
         timestamptz published_at
     }
     memberships {
@@ -91,9 +91,9 @@ erDiagram
     }
     payments {
         uuid id PK
-        uuid leaderboard_id FK
+        uuid leaderboard_id FK "null once board deleted"
         uuid user_id FK
-        varchar kind "OneOffEvent | ProMonthly"
+        varchar kind "PublicOneOff | PublicOngoing | PrivateUnlimited"
         int amount_cents
         char currency "EUR"
         varchar status "Pending | Paid | Failed | Refunded"
@@ -127,18 +127,26 @@ These are three separate settings on a board, so any combination works. A privat
 - **`Private`**: invite-only, the flow you already have.
 - **`Public`**: listed in `GET /leaderboards/public`, and anyone taps **Join**, which creates an `Accepted` membership directly. Admins can still invite people to a public board. Results stay hidden until you post on public boards too.
 
-**Plan and limits** (`plan`, `member_limit`). Prices and limits live in `appsettings.json` under `Plans`, not in code:
+**Pricing** (`plan`, `member_limit`, `expires_at`). Prices and limits live in `appsettings.json` under `Plans`, not in code. All prices below are placeholders.
 
-| Plan | When | Member limit | Price (placeholder) |
+| Board | Price | Member limit | How long it lasts |
 |---|---|---|---|
-| `Free` private | default | **15** (`FreePrivateMemberLimit`) | free |
-| `Free` public | default | unlimited (`FreePublicMemberLimit`) | free |
-| `OneOffEvent` | one-off comps | 500 | **€20 once**, paid before publishing |
-| `Pro` | upgrade for big ongoing private boards | unlimited | €9/month (placeholder) |
+| **Private** (one-off or ongoing) | **free** | **30** (`FreePrivateMemberLimit`) | until the owner deletes it |
+| Private, upgraded (`PrivateUnlimited`) | €10 once | unlimited | until the owner deletes it |
+| **Public one-off** (`PublicOneOff`) | €20 once, before publishing | unlimited | **deleted 30 days after the event** (`OneOffRetentionDays`) |
+| **Public ongoing** (`PublicOngoing`) | €50 once, before publishing | unlimited | until the owner deletes it |
 
-- The member count includes **pending invites**, so an admin can't send 50 invites to a 15-seat board. Hitting the cap returns **402 Payment Required**, which the app can turn into an "Upgrade" prompt.
-- `member_limit` is copied onto the board when its plan changes instead of being looked up live. That means you can change prices later without breaking existing boards, and you can hand a friend's gym a custom limit with one SQL update.
-- **One-off comps must be paid for before they're published.** Drafting, editing and AI import stay free, so people only pay once they're happy with it.
+- **Public boards are paid before they're published.** Drafting, editing and AI import stay free, so organisers only pay once they're happy with the board.
+- **Private boards are free up to 30 people.** The count includes **pending invites**, so an admin can't send 50 invites to a 30-seat board. Hitting the cap returns **402 Payment Required**, which the app can turn into an "Upgrade" prompt. Existing members are never removed.
+- `member_limit` is copied onto the board when its plan changes instead of being looked up live. That means you can change prices or limits later without breaking existing boards, and you can hand a friend's gym a custom limit with one SQL update.
+
+**Deleting after 30 days.** Publishing a public one-off sets `expires_at` to 30 days after the event starts, or 30 days after publishing if the date has already passed. The board's API response includes `expiresAt`, so the app can show "this board will be deleted on 13 April". Then:
+1. A background job inside the API (`Jobs/ExpiredBoardCleanup.cs`) runs every hour. It deletes expired boards in a single SQL `DELETE`, and Postgres cascades that to events, scores, hearts, comments, views and memberships.
+2. Payment rows are **kept**, with their board id set to null, so the accounts still add up.
+3. On free hosting that sleeps when idle, the job runs when the API next wakes. A deletion a few hours late doesn't matter. If it ever does, the same `DELETE` can run from Supabase's `pg_cron`.
+4. For testing, `POST /dev/cleanup-expired?asOf=2027-04-14T00:00:00Z` runs the job as if it were that date.
+
+Owners can also delete any board themselves with `DELETE /leaderboards/{id}`.
 
 **Payments flow.** No provider is connected yet:
 1. `POST /leaderboards/{id}/checkout {kind}` creates a `Pending` payment at the configured price. With Stripe, this also creates a Checkout Session and returns its URL.
@@ -182,9 +190,9 @@ If you can't see them, `GET /events/{id}/results` returns `locked: true` plus th
 4. **Comments are per event**, not per score, and are a flat list with no replies.
 5. **Rx/Scaled** is a single flag on the score. Scaled scores are labelled but still ranked together. Splitting them into separate leaderboards is an easy follow-up.
 6. Scores are only visible to the board's members, including on public boards: you join to see them.
-7. **Anyone can create a public board for free**, with no cap. If that invites spam, limit public boards to verified organisers or put them on a paid plan.
-8. The **member cap applies to private boards only**, matching what you described. Paying for a one-off comp raises its cap to 500.
-9. **Monthly Pro is a placeholder.** You mentioned "payment required" past the cap but not whether that's a one-off or a subscription. I'd go with a subscription, because an ongoing board keeps costing you to run.
+7. **All payments are one-time.** If ongoing boards should be paid monthly or yearly instead, that needs an expiry date and renewal, which is a small change.
+8. **Private one-off boards** follow the private rules: free up to 30 people, and **not** auto-deleted. Only *public* one-offs are deleted after 30 days.
+9. **The 30 days count from the event's start date**, so results stay up for a month after the comp.
 
 ## Later additions that fit without reworking anything
 

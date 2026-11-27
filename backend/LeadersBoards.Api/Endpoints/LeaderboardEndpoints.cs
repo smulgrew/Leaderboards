@@ -33,6 +33,7 @@ public static class LeaderboardEndpoints
         {
             var me = http.UserId();
             var now = DateTimeOffset.UtcNow;
+            // Finished one-offs drop out of search but stay viewable to members until they expire.
             var query = db.Leaderboards.Where(b => b.Visibility == Visibility.Public
                 && b.Status == LeaderboardStatus.Published && (b.EndsAt == null || b.EndsAt > now));
             if (!string.IsNullOrWhiteSpace(q)) query = query.Where(b => EF.Functions.ILike(b.Name, $"%{q.Trim()}%"));
@@ -97,8 +98,8 @@ public static class LeaderboardEndpoints
                 .ToListAsync();
 
             return Results.Ok(new LeaderboardDto(b.Id, b.Name, b.Description, b.Kind, b.Visibility, b.Status,
-                b.StartsAt, b.EndsAt, b.Plan, b.MemberLimit, await db.MemberCount(id),
-                BoardRules.NeedsPaymentToPublish(b), m.Role, events));
+                b.StartsAt, b.EndsAt, b.ExpiresAt, b.Plan, b.MemberLimit, await db.MemberCount(id),
+                BoardRules.RequiredPaymentToPublish(b), m.Role, events));
         });
 
         // Public boards: tap Join, no invite needed.
@@ -150,19 +151,22 @@ public static class LeaderboardEndpoints
             return Results.NoContent();
         });
 
-        // Draft -> Published. One-off comps must be paid for first (402 Payment Required).
-        g.MapPost("/leaderboards/{id:guid}/publish", async (Guid id, HttpContext http, AppDbContext db) =>
+        // Draft -> Published. Public boards must be paid for first (402 Payment Required).
+        g.MapPost("/leaderboards/{id:guid}/publish", async (Guid id, HttpContext http, AppDbContext db,
+            IOptions<PlanOptions> plans) =>
         {
             var m = await db.AcceptedMembership(id, http.UserId());
             if (m is null || !m.IsAdmin) return Results.StatusCode(403);
             // Ongoing boards may start empty (WODs get added day by day); one-offs need their events up front.
             if (m.Leaderboard.Kind == LeaderboardKind.OneOff && !await db.Events.AnyAsync(e => e.LeaderboardId == id))
                 return Results.BadRequest("Add at least one event before publishing.");
-            if (BoardRules.NeedsPaymentToPublish(m.Leaderboard))
-                return Results.Problem("Pay for this one-off event before publishing (POST /leaderboards/{id}/checkout).",
+            if (BoardRules.RequiredPaymentToPublish(m.Leaderboard) is PaymentKind needed)
+                return Results.Problem($"Public boards are paid. Checkout with kind \"{needed}\" before publishing.",
                     statusCode: 402);
+            var now = DateTimeOffset.UtcNow;
             m.Leaderboard.Status = LeaderboardStatus.Published;
-            m.Leaderboard.PublishedAt = DateTimeOffset.UtcNow;
+            m.Leaderboard.PublishedAt = now;
+            m.Leaderboard.ExpiresAt = BoardRules.ExpiryOnPublish(m.Leaderboard, plans.Value, now);
             await db.SaveChangesAsync();
             return Results.NoContent();
         });
@@ -175,16 +179,25 @@ public static class LeaderboardEndpoints
             var me = http.UserId();
             var m = await db.AcceptedMembership(id, me);
             if (m is null || !m.IsAdmin) return Results.StatusCode(403);
-            if (req.Kind == PaymentKind.OneOffEvent && m.Leaderboard.Kind != LeaderboardKind.OneOff)
-                return Results.BadRequest("Only one-off events use the one-off fee.");
-            if (req.Kind == PaymentKind.OneOffEvent && m.Leaderboard.Plan == BoardPlan.OneOffEvent)
-                return Results.Conflict("Already paid.");
+            if (BoardRules.CheckPaymentFits(req.Kind, m.Leaderboard) is string error)
+                return Results.BadRequest(error);
 
             var (amount, currency) = BoardRules.Price(req.Kind, plans.Value);
             var p = new Payment { LeaderboardId = id, UserId = me, Kind = req.Kind, AmountCents = amount, Currency = currency };
             db.Payments.Add(p);
             await db.SaveChangesAsync();
             return Results.Ok(new CheckoutDto(p.Id, amount, currency, CheckoutUrl: null));
+        });
+
+        // Owner deletes a board and everything in it (events, scores, hearts, comments...).
+        // Payments are kept with their board id set to null.
+        g.MapDelete("/leaderboards/{id:guid}", async (Guid id, HttpContext http, AppDbContext db) =>
+        {
+            var m = await db.AcceptedMembership(id, http.UserId());
+            if (m is null) return Results.NotFound();
+            if (m.Role != MemberRole.Owner) return Results.StatusCode(403);
+            await db.Leaderboards.Where(b => b.Id == id).ExecuteDeleteAsync();
+            return Results.NoContent();
         });
     }
 

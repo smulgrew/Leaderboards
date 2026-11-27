@@ -159,3 +159,27 @@ VALUES ('20261127135425_InitialCreate', '10.0.15');
 
 COMMIT;
 
+START TRANSACTION;
+ALTER TABLE payments DROP CONSTRAINT fk_payments_leaderboards_leaderboard_id;
+
+ALTER TABLE leaderboards RENAME COLUMN plan_expires_at TO expires_at;
+
+ALTER TABLE payments ALTER COLUMN leaderboard_id DROP NOT NULL;
+
+CREATE INDEX ix_leaderboards_expires_at ON leaderboards (expires_at) WHERE expires_at IS NOT NULL;
+
+ALTER TABLE payments ADD CONSTRAINT fk_payments_leaderboards_leaderboard_id FOREIGN KEY (leaderboard_id) REFERENCES leaderboards (id) ON DELETE SET NULL;
+
+UPDATE leaderboards SET plan = 'PublicOneOff' WHERE plan = 'OneOffEvent';
+
+UPDATE leaderboards SET plan = 'PrivateUnlimited' WHERE plan = 'Pro';
+
+UPDATE payments SET kind = 'PublicOneOff' WHERE kind = 'OneOffEvent';
+
+UPDATE payments SET kind = 'PrivateUnlimited' WHERE kind = 'ProMonthly';
+
+INSERT INTO "__EFMigrationsHistory" (migration_id, product_version)
+VALUES ('20261127141300_PricingPlans', '10.0.15');
+
+COMMIT;
+
