@@ -37,7 +37,7 @@ Install these once (restart VS Code afterwards so it sees them; that's the usual
 | .NET 10 SDK | https://dotnet.microsoft.com/download/dotnet/10.0 | Pick the **SDK** (x64), not "Runtime" |
 | Node.js LTS | https://nodejs.org/en/download | Version 20 or newer |
 
-The first time the API starts, Windows Firewall may ask about `dotnet`. Allow it on **private networks**, otherwise your phone can't reach the API.
+The first time, start.bat asks Windows for admin permission (click **Yes**) to let your phone through the firewall to the API on port 5271 (`scripts/windows/allow-firewall.ps1`). That rule only covers **Private** networks, so if start.bat warns that your Wi-Fi is marked Public, switch it to Private in Settings > Network & internet. If the app says it can't reach the API, open `http://<your-PC's-IP>:5271/health` in your phone's browser: it should show `Healthy`.
 
 **Why a `.bat` and not an `.exe`?** A `.bat` is a plain-text list of commands that Windows runs when you double-click it, so it behaves like an exe but you can open it in VS Code and see exactly what it does. A real exe would have to be compiled, would be flagged by antivirus and SmartScreen because it isn't signed, and couldn't include Docker, .NET or Node anyway (they're big installers that need admin rights). `start.bat` is two lines that hand over to `scripts/windows/start.ps1`, a PowerShell script (PowerShell is Windows' built-in scripting language, roughly "C#-flavoured shell"), where all the checks live with comments.
 

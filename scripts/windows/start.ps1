@@ -166,6 +166,29 @@ if (-not (Test-Path (Join-Path $appDir 'node_modules'))) {
 }
 Ok "Packages installed"
 
+# ---------------------------------------------------------------- firewall (so your phone can reach the API)
+Step "Checking Windows Firewall"
+$ruleName = 'LeadersBoards API (dev, port 5271)'
+if (-not (Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue)) {
+    Say "Your phone needs the firewall to allow the API's port (5271). This is a one-time step."
+    Say "Windows will ask 'Do you want to allow this app to make changes?'. Click Yes."
+    $fw = Join-Path $PSScriptRoot 'allow-firewall.ps1'
+    try {
+        # -Verb RunAs = "Run as administrator", which is what triggers the Yes/No popup.
+        Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$fw`""
+    } catch {
+        Write-Host "  [warn] Skipped (you clicked No). Your phone won't reach the API until this is done." -ForegroundColor Yellow
+    }
+}
+if (Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue) { Ok "Firewall allows port 5271 on private networks" }
+
+# The rule only covers "Private" networks. Windows often marks home Wi-Fi as "Public" by default.
+$publicNets = @(Get-NetConnectionProfile -ErrorAction SilentlyContinue | Where-Object { $_.NetworkCategory -eq 'Public' })
+foreach ($net in $publicNets) {
+    Write-Host "  [warn] Windows has your network '$($net.Name)' marked as Public, so the firewall still blocks your phone." -ForegroundColor Yellow
+    Write-Host "         Fix: Settings > Network & internet > Wi-Fi (or Ethernet) > your network > Network profile type: Private" -ForegroundColor Yellow
+}
+
 # ---------------------------------------------------------------- API + Expo windows
 Step "Opening the API and Expo windows"
 
