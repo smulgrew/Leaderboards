@@ -4,9 +4,10 @@
 $root    = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $pidFile = Join-Path $root '.run\windows.pids'
 
-# Always use THIS repo's docker-compose.yml. If a COMPOSE_FILE environment variable is set
-# (often left over from another project), docker would otherwise use that project's file.
-Remove-Item Env:COMPOSE_FILE, Env:COMPOSE_PROJECT_NAME -ErrorAction SilentlyContinue
+# Always use THIS repo's docker-compose.yml and nothing else. Environment variables starting with
+# COMPOSE_ (COMPOSE_FILE, COMPOSE_ENV_FILES, ...) left over from another project would otherwise
+# make docker compose load that project's files. We clear them for this script only.
+Get-ChildItem Env: | Where-Object { $_.Name -like 'COMPOSE_*' } | ForEach-Object { Remove-Item "Env:$($_.Name)" }
 $composeArgs = @('compose', '-f', (Join-Path $root 'docker-compose.yml'), '-p', 'leadersboards')
 
 
